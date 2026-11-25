@@ -29,6 +29,23 @@ mkdir -p "$web"
 cp -R public/fonts public/images public/workspace.css public/favicon.ico public/robots.txt "$web/"
 if [[ ! -e "$web/.htaccess" ]]; then
     cp public/.htaccess "$web/.htaccess"
+elif ! grep -Eq '^[[:space:]]*RewriteRule[[:space:]]+[^[:space:]]+[[:space:]]+/?index\.php([[:space:]]|$)' "$web/.htaccess"; then
+    # cPanel may have already created this file to select the PHP handler.
+    rules=$(mktemp "$web/.htaccess.XXXXXX")
+    trap 'rm -f "$rules"' EXIT
+    cp -p "$web/.htaccess" "$rules"
+    cat >> "$rules" <<'APACHE'
+
+# Laravel application routes
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ index.php [L]
+</IfModule>
+APACHE
+    mv "$rules" "$web/.htaccess"
+    trap - EXIT
 fi
 if [[ ! -e "$web/index.php" ]]; then
     php -r 'echo "<?php\nrequire ", var_export($argv[1], true), ";\n";' "$app/public/index.php" > "$web/index.php"
