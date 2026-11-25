@@ -1,0 +1,1 @@
+{{ \Carbon\CarbonImmutable::parse($row->started_at,'UTC')->setTimezone('Asia/Kuala_Lumpur')->format('d M Y H:i') }} – {{ $row->ended_at ? \Carbon\CarbonImmutable::parse($row->ended_at,'UTC')->setTimezone('Asia/Kuala_Lumpur')->format('d M Y H:i') : 'In progress' }} (MYT)
