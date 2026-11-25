@@ -26,7 +26,7 @@ php artisan migrate --force
 php artisan optimize
 
 mkdir -p "$web"
-rsync -a public/fonts public/images public/workspace.css public/favicon.ico public/robots.txt "$web/"
+cp -R public/fonts public/images public/workspace.css public/favicon.ico public/robots.txt "$web/"
 if [[ ! -e "$web/.htaccess" ]]; then
     cp public/.htaccess "$web/.htaccess"
 fi
