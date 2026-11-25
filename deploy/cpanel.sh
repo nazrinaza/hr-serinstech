@@ -5,6 +5,15 @@ app="$(cd "$(dirname "$0")/../hr-app" && pwd)"
 web="$HOME/public_html/hr.serinstech.com"
 cd "$app"
 
+export PATH="$HOME/bin:$PATH:/opt/cpanel/composer/bin"
+if ! php -r 'exit(PHP_VERSION_ID >= 80401 ? 0 : 1);' 2>/dev/null && [[ -x /opt/cpanel/ea-php84/root/usr/bin/php ]]; then
+    export PATH="/opt/cpanel/ea-php84/root/usr/bin:$PATH"
+fi
+if ! command -v composer >/dev/null; then
+    echo 'Install Composer 2 in ~/bin/composer or ask the host to enable Composer for this account.' >&2
+    exit 1
+fi
+
 if [[ ! -s .env ]] || ! grep -Eq '^APP_KEY=.{8,}' .env; then
     echo 'Configure the production hr-app/.env and its permanent APP_KEY before deploying.' >&2
     exit 1
