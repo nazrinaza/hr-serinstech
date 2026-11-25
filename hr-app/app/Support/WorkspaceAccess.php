@@ -56,6 +56,8 @@ final class WorkspaceAccess
             ->where('e.company_id', $this->company->id);
         if ($this->employee) {
             $query->where('e.id', $this->employee->id);
+        } elseif ($table === 'expense_claims') {
+            $query->where('r.status', '!=', 'draft');
         }
 
         return $query;

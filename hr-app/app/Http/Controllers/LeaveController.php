@@ -52,7 +52,9 @@ class LeaveController extends Controller
                 ->where('l.status', 'pending')->orderBy('l.id')->simplePaginate(20, ['l.*', 'e.name'], 'queue');
         }
 
-        return view('leave', compact('employee', 'history', 'queue'));
+        $pendingDays = DB::table('leave_requests')->where('employee_id', $employee->id)->where('status', 'pending')->sum('days');
+
+        return view('leave', compact('employee', 'history', 'queue', 'pendingDays'));
     }
 
     public function rollover(Request $request, int $employee): RedirectResponse

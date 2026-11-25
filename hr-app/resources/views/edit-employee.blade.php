@@ -18,7 +18,7 @@
             <button>Save changes</button>
         </form>
     </section>
-    <section>
+    <section id="employee-access">
         <h2>Employee access</h2>
         @if($profile->user_id)
             <p>Employee login linked. <a href="{{ route('users') }}">Manage login access</a></p>

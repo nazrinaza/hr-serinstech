@@ -213,6 +213,6 @@ class WorkspaceController extends Controller
         Auth::login($user);
         $request->session()->regenerate();
 
-        return redirect()->route('employees');
+        return redirect()->route('employees')->with('status', 'You have joined your workspace. Complete your Personal and Contact details below.');
     }
 }

@@ -1,3 +1,4 @@
-@if($queue !== null)<section><h2>{{ $module === 'claims' ? 'Accounts claim approvals' : 'HR timesheet approvals' }}</h2>
-@forelse($queue as $row)<article><h3>{{ $row->name }}</h3>@if($module === 'claims')<p>{{ $row->spent_on }} · {{ $row->description }} · RM {{ number_format($row->amount,2) }}</p>@if($row->receipt)<a href="{{ route('claims.receipt',$row->id) }}">Review receipt</a>@endif @else<p>@include('operations.shift')</p>@endif
+@if($queue !== null)<section @if($module === 'claims') id="claim-approvals" @endif><h2>{{ $module === 'claims' ? 'Accounts claim approvals' : 'HR timesheet approvals' }}</h2>
+@forelse($queue as $row)<article><h3>{{ $row->name }}</h3>@if($module === 'claims')<p>{{ $row->spent_on }} · {{ $row->description }} · RM {{ number_format($row->amount,2) }}</p>@include('operations.claim-details')
+@if($row->receipt)<a href="{{ route('claims.receipt',$row->id) }}">Review receipt</a>@endif @else<p>@include('operations.shift')</p>@endif
 <form class="decision-actions" method="post" action="{{ route('operations.decide',[$module,$row->id]) }}">@csrf @method('PATCH')<button name="status" value="approved">Approve</button><button name="status" value="declined">Decline</button></form></article>@empty<p>No submissions awaiting review.</p>@endforelse @include('leave-pagination',['items'=>$queue])</section>@endif

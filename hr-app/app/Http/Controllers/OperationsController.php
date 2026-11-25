@@ -33,7 +33,14 @@ class OperationsController extends Controller
             )]);
         }
 
-        return view('operations.dashboard', [...$access->navigation(), ...compact('posts', 'pendingLeave', 'pendingClaims')]);
+        $pendingTimesheets = $access->records('attendance_entries')->where('r.status', 'pending')->count();
+        $reviewCounts = [];
+        foreach (['claims', 'attendance'] as $module) {
+            if ($access->reviewsDepartment($module)) {
+                $reviewCounts[$module] = $access->reviewQueue($module)->count();
+            }
+        }
+        return view('operations.dashboard', [...$access->navigation(), ...compact('posts', 'pendingLeave', 'pendingClaims', 'pendingTimesheets', 'reviewCounts')]);
     }
 
     public function posts(Request $request): View
@@ -60,26 +67,77 @@ class OperationsController extends Controller
         $claims = $access->records('expense_claims')->select('r.*', 'e.name')->latest('r.id')->simplePaginate(20);
         $queue = $access->reviewsDepartment('claims') ? $access->reviewQueue('claims')->orderBy('r.id')->simplePaginate(20, ['*'], 'queue') : null;
 
-        return view('operations.claims', [...$access->navigation(), ...compact('claims', 'queue')]);
+        $draft = null;
+        if ($request->filled('draft')) {
+            $draft = DB::table('expense_claims')->where('employee_id', $access->staff()->id)
+                ->where('status', 'draft')->where('id', $request->integer('draft'))->firstOrFail();
+        }
+
+        return view('operations.claims', [...$access->navigation(), ...compact('claims', 'queue', 'draft')]);
     }
 
-    public function submitClaim(Request $request): RedirectResponse
+    public function submitClaim(Request $request, ?int $claim = null): RedirectResponse
     {
         $employee = WorkspaceAccess::for($request)->staff();
-        $data = $request->validate(['spent_on' => 'required|date_format:Y-m-d|before_or_equal:today', 'description' => 'required|string|max:255',
-            'amount' => 'required|numeric|decimal:0,2|min:0.01|max:9999999999.99', 'receipt' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120']);
+        $data = $request->validate([
+            'intent' => 'sometimes|in:draft,submit',
+            'claim_type' => 'nullable|string|max:100',
+            'description' => 'required|string|max:255',
+            'items' => 'sometimes|array|min:1|max:50',
+            'items.*' => 'required|array:description,spent_on,amount',
+            'items.*.description' => 'required|string|max:255',
+            'items.*.spent_on' => 'required|date_format:Y-m-d|before_or_equal:'.now('Asia/Kuala_Lumpur')->toDateString(),
+            'items.*.amount' => 'required|numeric|decimal:0,2|min:0.01|max:9999999999.99',
+            'spent_on' => 'required_without:items|date_format:Y-m-d|before_or_equal:'.now('Asia/Kuala_Lumpur')->toDateString(),
+            'amount' => 'required_without:items|numeric|decimal:0,2|min:0.01|max:9999999999.99',
+            'receipt' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+        ]);
+        $items = array_values($data['items'] ?? [[
+            'description' => $data['description'], 'spent_on' => $data['spent_on'], 'amount' => $data['amount'],
+        ]]);
+        $cents = 0;
+        foreach ($items as $item) {
+            [$whole, $fraction] = array_pad(explode('.', (string) $item['amount']), 2, '');
+            $cents += (int) $whole * 100 + (int) str_pad($fraction, 2, '0');
+        }
+        if ($cents > 999999999999) {
+            throw ValidationException::withMessages(['items' => 'The claim total exceeds the maximum amount.']);
+        }
+        $draft = ($data['intent'] ?? 'submit') === 'draft';
+        $values = [
+            'employee_id' => $employee->id, 'description' => $data['description'], 'claim_type' => $data['claim_type'] ?? null,
+            'items' => json_encode($items, JSON_THROW_ON_ERROR), 'spent_on' => min(array_column($items, 'spent_on')),
+            'amount' => number_format($cents / 100, 2, '.', ''), 'status' => $draft ? 'draft' : 'pending', 'updated_at' => now(),
+        ];
         $path = $request->file('receipt')?->store('receipts', 'local');
         abort_if($path === false, 503);
+        if ($path) {
+            $values['receipt'] = $path;
+        }
         try {
-            DB::table('expense_claims')->insert([...$data, 'receipt' => $path, 'employee_id' => $employee->id, 'created_at' => now(), 'updated_at' => now()]);
+            $previousReceipt = DB::transaction(function () use ($values, $claim, $employee) {
+                if ($claim === null) {
+                    DB::table('expense_claims')->insert([...$values, 'created_at' => now()]);
+
+                    return null;
+                }
+                $query = DB::table('expense_claims')->where('id', $claim)->where('employee_id', $employee->id)->where('status', 'draft');
+                $current = $query->lockForUpdate()->firstOrFail();
+                $query->update($values);
+
+                return $current->receipt;
+            });
         } catch (\Throwable $exception) {
             if ($path) {
                 Storage::disk('local')->delete($path);
             }
             throw $exception;
         }
+        if ($path && $previousReceipt) {
+            Storage::disk('local')->delete($previousReceipt);
+        }
 
-        return back()->with('status', 'Claim submitted.');
+        return redirect()->route('claims')->with('status', $draft ? 'Draft saved.' : 'Claim submitted to Accounts.');
     }
 
     public function receipt(Request $request, int $claim): StreamedResponse

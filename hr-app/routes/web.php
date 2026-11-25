@@ -38,6 +38,7 @@ Route::middleware(['auth', EnsureLoginEnabled::class])->group(function () {
     Route::get('/posts', [OperationsController::class, 'posts'])->name('posts');
     Route::post('/posts', [OperationsController::class, 'publish'])->name('posts.store');
     Route::get('/claims', [OperationsController::class, 'claims'])->name('claims');
+    Route::patch('/claims/{claim}/draft', [OperationsController::class, 'submitClaim'])->whereNumber('claim')->name('claims.draft');
     Route::post('/claims', [OperationsController::class, 'submitClaim'])->name('claims.store');
     Route::get('/claims/{claim}/receipt', [OperationsController::class, 'receipt'])->whereNumber('claim')->name('claims.receipt');
     Route::get('/attendance', [OperationsController::class, 'attendance'])->name('attendance');

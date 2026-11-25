@@ -106,6 +106,28 @@ class OperationsTest extends TestCase
         return $user;
     }
 
+    public function test_itemised_draft_remains_private_until_employee_submits_it(): void
+    {
+        $owner = User::factory()->create();
+        $company = $this->company($owner);
+        $staff = $this->employee($company, 'Sales');
+        $accounts = $this->employee($company, 'Accounts');
+        $line = ['description' => 'Fare', 'spent_on' => today()->toDateString(), 'amount' => '10.10'];
+        $data = ['intent' => 'draft', 'claim_type' => 'Travel', 'description' => 'Trip draft', 'items' => [$line, [...$line, 'amount' => '0.20']]];
+        $this->actingAs($staff)->post('/claims', $data)->assertSessionHasNoErrors();
+        $claim = DB::table('expense_claims')->first();
+        $this->assertDatabaseHas('expense_claims', ['id' => $claim->id, 'amount' => '10.30', 'status' => 'draft']);
+        $this->get('/claims?draft='.$claim->id)->assertSee('Edit draft claim')->assertSee('Fare');
+        $this->actingAs($accounts)->get('/claims')->assertDontSee('Trip draft');
+        $this->patch("/claims/$claim->id/draft", $data)->assertNotFound();
+        $this->actingAs($owner)->get('/claims')->assertDontSee('Trip draft');
+        $this->actingAs($staff)->patch("/claims/$claim->id/draft", [...$data, 'intent' => 'submit'])->assertSessionHasNoErrors();
+        $this->patch("/claims/$claim->id/draft", $data)->assertNotFound();
+        $this->actingAs($accounts)->get('/claims')->assertSee('Trip draft')->assertSee('Fare');
+        $this->patch("/review-queue/claims/$claim->id", ['status' => 'approved'])->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('expense_claims', ['id' => $claim->id, 'status' => 'approved']);
+    }
+
     public function test_claims_go_only_to_accounts_and_timesheets_only_to_hr(): void
     {
         Storage::fake('local');
