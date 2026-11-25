@@ -121,10 +121,15 @@ class WorkspaceController extends Controller
 
     public function saveSection(Request $request, int $employee, string $section): RedirectResponse
     {
-        $employeeQuery = $this->ownedEmployee($request, $employee);
-        $employeeQuery->firstOrFail();
+        $access = WorkspaceAccess::for($request);
         $definition = config('employee-profile')[$section] ?? null;
         abort_unless($definition, 404);
+        $employeeQuery = $access->roster()->where('id', $employee);
+        if ($access->employee) {
+            abort_unless($definition['employee_editable'] ?? false, 403);
+            $employeeQuery->where('user_id', $request->user()->id);
+        }
+        $employeeQuery->firstOrFail();
         $sequence = $request->validate(['sequence' => 'required|integer|min:0'])['sequence'];
         $data = $request->validate(EmployeeProfile::rules($definition['fields']));
         $hasValue = count(array_filter($data, fn ($value) => $value !== null)) > 0;
@@ -145,7 +150,11 @@ class WorkspaceController extends Controller
             );
         });
 
-        return redirect()->route('employees.edit', [$employee, 'tab' => $section])->with('status', 'Profile section saved.');
+        $destination = $access->employee
+            ? route('employees', ['tab' => $section])
+            : route('employees.edit', [$employee, 'tab' => $section]);
+
+        return redirect($destination)->with('status', 'Profile section saved.');
     }
 
     public function update(Request $request, int $employee): RedirectResponse

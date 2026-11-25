@@ -1,6 +1,6 @@
 <nav class="profile-tabs" aria-label="Employee profile sections">
 @foreach($tabs as $key => $section)
-    <a href="{{ $editable ? route('employees.edit', [$profile->id, 'tab' => $key]) : route('employees', ['tab' => $key]) }}" @if($key === $tab) aria-current="page" @endif>{{ $section['label'] }}</a>
+    <a href="{{ empty($selfService) ? route('employees.edit', [$profile->id, 'tab' => $key]) : route('employees', ['tab' => $key]) }}" @if($key === $tab) aria-current="page" @endif>{{ $section['label'] }}</a>
 @endforeach
 </nav>
 <section class="profile-panel">

@@ -2,6 +2,7 @@
 
 return [
     'personal' => [
+        'employee_editable' => true,
         'label' => 'Personal',
         'multiple' => false,
         'fields' => [
@@ -79,6 +80,7 @@ return [
         ],
     ],
     'contact' => [
+        'employee_editable' => true,
         'label' => 'Contact',
         'multiple' => false,
         'fields' => [

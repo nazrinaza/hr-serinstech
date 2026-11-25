@@ -41,6 +41,20 @@ class WorkspaceTest extends TestCase
         $this->get('/join')->assertOk();
         $this->post('/join', [...$credentials, 'invite_code' => $code])->assertRedirect(route('employees'));
         $this->get('/employees')->assertSee('Updated Employee')->assertDontSee('Private Colleague')->assertDontSee('Add employee');
+        $this->get('/employees')->assertSee('Save Personal');
+        $this->patch("$url/profile/personal", ['sequence' => 0, 'first_name' => 'Amina'])
+            ->assertRedirect(route('employees', ['tab' => 'personal']));
+        $this->get('/employees')->assertSee('Amina');
+        $this->patch("$url/profile/contact", ['sequence' => 0, 'personal_email' => 'invalid'])
+            ->assertSessionHasErrors('personal_email');
+        $this->patch("$url/profile/contact", ['sequence' => 0, 'emergency_contact_phone' => '0100000000'])
+            ->assertRedirect(route('employees', ['tab' => 'contact']));
+        $this->patch("$url/profile/contact", ['sequence' => 1, 'emergency_contact_phone' => '0100000001'])
+            ->assertSessionHasNoErrors();
+        $this->get('/employees?tab=contact')->assertSee('0100000001')->assertDontSee('0100000000');
+        $colleague = DB::table('employees')->where('code', '02')->value('id');
+        $this->patch("/employees/$colleague/profile/contact", ['sequence' => 0, 'city' => 'Example'])->assertNotFound();
+        $this->patch("$url/profile/contract", ['sequence' => 0, 'basic_salary' => '5000'])->assertForbidden();
         $this->get("$url/edit")->assertForbidden();
         $this->patch($url, $details)->assertForbidden();
         $this->post('/employees', $details)->assertForbidden();
