@@ -6,19 +6,8 @@ web="$HOME/public_html/hr.serinstech.com"
 cd "$app"
 
 export PATH="$HOME/bin:$PATH:/opt/cpanel/composer/bin"
-supports_php() {
-    "$1" -r 'exit(PHP_VERSION_ID >= 80401 ? 0 : 1);' 2>/dev/null
-}
-if ! supports_php php; then
-    for php_dir in /opt/alt/php84/usr/bin /opt/cpanel/ea-php84/root/usr/bin; do
-        if supports_php "$php_dir/php"; then
-            export PATH="$php_dir:$PATH"
-            break
-        fi
-    done
-fi
-if ! supports_php php; then
-    echo 'Deployment requires PHP CLI 8.4.1 or newer.' >&2
+if ! php -r 'exit(PHP_VERSION_ID >= 80300 ? 0 : 1);'; then
+    echo 'The hosting account default PHP CLI must be PHP 8.3 or newer.' >&2
     exit 1
 fi
 if ! command -v composer >/dev/null; then

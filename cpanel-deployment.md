@@ -1,8 +1,8 @@
 # HR SeriNSTech on cPanel
 
-The Laravel application lives in `hr-app`. The local starter uses SQLite. These first-deployment instructions assume a new MySQL database, a dedicated HTTPS subdomain and PHP 8.4, matching the local PHP major and minor version.
+The Laravel application lives in `hr-app`. The local starter uses SQLite. These first-deployment instructions assume a new MySQL database, a dedicated HTTPS subdomain and the hosting account’s default PHP 8.3.37.
 
-1. In cPanel, select PHP 8.4 for the subdomain. Confirm the terminal uses the same version and has Composer 2 and PDO MySQL available.
+1. In cPanel, inherit the account PHP version for the subdomain when it is PHP 8.3.37. Confirm the terminal uses the same version and has Composer 2 and PDO MySQL available.
 2. Upload the application to a private directory such as `/home/ACCOUNT/apps/hr-app`. Configure the subdomain document root as `/home/ACCOUNT/apps/hr-app/public`. Include the supplied public/.htaccess. If your plan restricts document roots, have the host configure this mapping before deployment.
 3. Create a dedicated database and database user in cPanel. Grant that user privileges on the application database.
 4. In the application directory, copy `.env.example` to a new production `.env`. Set `APP_NAME="HR SeriNSTech"`, `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL` to the HTTPS URL and `SESSION_SECURE_COOKIE=true`. Set `DB_CONNECTION=mysql` and fill in DB_HOST, DB_PORT, DB_DATABASE, DB_USERNAME and DB_PASSWORD with your host's values. Keep the production environment file private.
